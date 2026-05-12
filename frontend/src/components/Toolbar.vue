@@ -1,5 +1,5 @@
 <template>
-  <div :class="['bg-slate-900/30 border-r border-slate-700 overflow-y-auto overflow-x-visible transition-all duration-300', visible ? 'w-72' : 'w-0 overflow-hidden']" style="overflow-x: visible;">
+  <div :class="['h-full bg-slate-900/30 border-r border-slate-700 overflow-y-auto overflow-x-visible transition-all duration-300', visible ? 'w-72' : 'w-0 overflow-hidden']" style="overflow-x: visible;">
     <div class="p-3 space-y-2">
       <div
         v-for="section in sections"

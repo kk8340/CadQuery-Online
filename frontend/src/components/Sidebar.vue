@@ -1,5 +1,5 @@
 <template>
-  <aside :class="['bg-slate-900/50 border-r border-slate-700 flex flex-col transition-all duration-300', visible ? 'w-72' : 'w-0 overflow-hidden']">
+  <aside :class="['h-full bg-slate-900/50 border-r border-slate-700 flex flex-col transition-all duration-300', visible ? 'w-72' : 'w-0 overflow-hidden']">
     <div class="p-4 border-b border-slate-700">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">我的模型</h2>
