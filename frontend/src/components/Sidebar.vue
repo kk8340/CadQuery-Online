@@ -35,7 +35,7 @@
             </svg>
           </button>
         </div>
-        <div class="text-xs text-slate-500 mt-1">{{ formatDate(model.updated_at || model.created_at) }}</div>
+        <div class="text-xs text-slate-500 mt-1">{{ formatDate(model.updatedAt || model.createdAt) }}</div>
       </div>
       <div v-if="models.length === 0" class="text-center text-slate-500 text-sm py-8">
         暂无模型

@@ -15,8 +15,8 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { STLLoader } from 'three/addons/loaders/STLLoader.js'
 
 const props = defineProps({
   meshData: { type: String, default: '' }
@@ -115,15 +115,32 @@ watch(() => props.meshData, (newData) => {
 
     scene.add(currentMesh)
     showOverlay.value = false
+
+    fitCameraToModel()
   } catch (e) {
     console.error('STL 加载失败:', e)
   }
 })
 
+function fitCameraToModel() {
+  if (!currentMesh) return
+  const box = new THREE.Box3().setFromObject(currentMesh)
+  const size = box.getSize(new THREE.Vector3())
+  const center = box.getCenter(new THREE.Vector3())
+  const maxDim = Math.max(size.x, size.y, size.z)
+  const distance = maxDim * 2.5
+  camera.position.set(center.x + distance * 0.6, center.y + distance * 0.6, center.z + distance * 0.6)
+  camera.lookAt(center)
+  controls.target.copy(center)
+  controls.update()
+  const far = distance * 10
+  camera.near = maxDim * 0.01
+  camera.far = far
+  camera.updateProjectionMatrix()
+}
+
 function resetView() {
-  camera.position.set(40, 40, 40)
-  camera.lookAt(0, 0, 0)
-  controls.reset()
+  fitCameraToModel()
 }
 
 onBeforeUnmount(() => {

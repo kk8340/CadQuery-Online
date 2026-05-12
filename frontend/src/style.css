@@ -1,8 +1,7 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  font-family: 'Inter', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
 * {
@@ -12,13 +11,13 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   background: #0f172a;
   color: #e2e8f0;
 }
 
 .monospace {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
 }
 
 .btn-primary {
@@ -210,7 +209,7 @@ body {
   border: 1px solid #334155;
   border-radius: 4px;
   padding: 6px 8px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
   font-size: 10px;
   color: #a5f3fc;
   overflow-x: auto;
@@ -253,10 +252,4 @@ body {
 
 .example-card:hover {
   background: linear-gradient(145deg, #334155 0%, #1e293b 100%);
-}
-
-.CodeMirror {
-  height: 100% !important;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
 }

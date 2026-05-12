@@ -4,11 +4,14 @@
 
 <script setup>
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
-import CodeMirror from 'codemirror'
-import 'codemirror/mode/python/python'
-import 'codemirror/addon/edit/matchbrackets'
-import 'codemirror/lib/codemirror.css'
-import 'codemirror/theme/monokai.css'
+import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view'
+import { EditorState } from '@codemirror/state'
+import { python } from '@codemirror/lang-python'
+import { oneDark } from '@codemirror/theme-one-dark'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { syntaxHighlighting, indentOnInput, bracketMatching, defaultHighlightStyle } from '@codemirror/language'
+import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 
 const props = defineProps({
   modelValue: { type: String, default: '' }
@@ -17,53 +20,90 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const editorContainer = ref(null)
-let editor = null
+let view = null
 let ignoreNextChange = false
 
 onMounted(() => {
-  editor = CodeMirror(editorContainer.value, {
-    value: props.modelValue,
-    mode: 'python',
-    theme: 'monokai',
-    lineNumbers: true,
-    matchBrackets: true,
-    indentUnit: 4,
-    tabSize: 4,
-    lineWrapping: true,
-    styleActiveLine: true
+  const updateListener = EditorView.updateListener.of((update) => {
+    if (update.docChanged && !ignoreNextChange) {
+      emit('update:modelValue', update.state.doc.toString())
+    }
   })
 
-  editor.on('change', () => {
-    if (!ignoreNextChange) {
-      emit('update:modelValue', editor.getValue())
-    }
+  const extensions = [
+    lineNumbers(),
+    history(),
+    highlightActiveLine(),
+    bracketMatching(),
+    closeBrackets(),
+    autocompletion(),
+    highlightSelectionMatches(),
+    indentOnInput(),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    python(),
+    oneDark,
+    EditorState.tabSize.of(4),
+    EditorView.lineWrapping,
+    keymap.of([
+      ...closeBracketsKeymap,
+      ...defaultKeymap,
+      ...searchKeymap,
+      ...historyKeymap,
+      ...completionKeymap,
+      indentWithTab
+    ]),
+    updateListener,
+    EditorView.theme({
+      '&': { height: '100%' },
+      '.cm-scroller': { overflow: 'auto', fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace", fontSize: '13px' },
+      '.cm-gutters': { minHeight: '100%' }
+    })
+  ]
+
+  const state = EditorState.create({
+    doc: props.modelValue,
+    extensions
+  })
+
+  view = new EditorView({
+    state,
+    parent: editorContainer.value
   })
 })
 
 watch(() => props.modelValue, (newVal) => {
-  if (editor && editor.getValue() !== newVal) {
+  if (!view) return
+  const currentVal = view.state.doc.toString()
+  if (currentVal !== newVal) {
     ignoreNextChange = true
-    editor.setValue(newVal)
+    view.dispatch({
+      changes: { from: 0, to: currentVal.length, insert: newVal }
+    })
     ignoreNextChange = false
   }
 })
 
 onBeforeUnmount(() => {
-  if (editor) {
-    editor.toTextArea()
-    editor = null
+  if (view) {
+    view.destroy()
+    view = null
   }
 })
 
 function insertCode(code) {
-  if (!editor) return
-  const cursor = editor.getCursor()
-  if (cursor.ch === 0 && cursor.line === 0 && editor.getValue().trim() === '') {
-    editor.setValue(code)
+  if (!view) return
+  const doc = view.state.doc.toString()
+  const pos = view.state.selection.main.head
+  if (doc.trim() === '') {
+    view.dispatch({
+      changes: { from: 0, to: doc.length, insert: code }
+    })
   } else {
-    editor.replaceRange('\n' + code, cursor)
+    view.dispatch({
+      changes: { from: pos, insert: '\n' + code }
+    })
   }
-  editor.focus()
+  view.focus()
 }
 
 defineExpose({ insertCode })

@@ -32,7 +32,7 @@
           </svg>
           示例
         </button>
-        <button class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" @click="saveModel">
+        <button class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" @click="handleSave">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
           </svg>
@@ -53,8 +53,8 @@
         :current-model-id="currentModelId"
         :model-name="modelName"
         :visible="sidebarVisible"
-        @select-model="openModel"
-        @delete-model="deleteModel"
+        @select-model="handleOpenModel"
+        @delete-model="handleDeleteModel"
         @new-model="showNewModel = true"
         @toggle-sidebar="sidebarVisible = !sidebarVisible"
       />
@@ -119,8 +119,8 @@
       </main>
     </div>
 
-    <ModelModal :show="showNewModel" @close="showNewModel = false" @confirm="createNewModel" />
-    <ExportModal :show="showExport" @close="showExport = false" @confirm="exportModel" />
+    <ModelModal :show="showNewModel" @close="showNewModel = false" @confirm="handleCreateModel" />
+    <ExportModal :show="showExport" @close="showExport = false" @confirm="handleExport" />
     <TemplatesModal :show="showTemplates" :templates="templates" @close="showTemplates = false" @select="onTemplateSelect" />
     <ExamplesModal :show="showExamples" @close="showExamples = false" @select="onExampleSelect" />
   </div>
@@ -128,8 +128,9 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { useApi } from './composables/useApi'
 import { DEFAULT_CODE, TEMPLATES } from './config'
+import { useEditor } from './composables/useEditor'
+import { useModels } from './composables/useModels'
 import CodeEditor from './components/CodeEditor.vue'
 import Viewer3D from './components/Viewer3D.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -139,29 +140,23 @@ import ExportModal from './components/ExportModal.vue'
 import TemplatesModal from './components/TemplatesModal.vue'
 import ExamplesModal from './components/ExamplesModal.vue'
 
-const { executeCode, exportModel: apiExportModel, getModels, createModel, updateModel, deleteModel: apiDeleteModel, getModelCode } = useApi()
+const { editorCode, meshData, statusText, statusType, setStatus, runCode, exportModel } = useEditor()
+const { models, currentModelId, modelName, loadModels, openModel, saveModel, createNewModel, deleteModelById } = useModels()
 
 const editorRef = ref(null)
 const viewerRef = ref(null)
 
-const currentModelId = ref(null)
-const editorCode = ref(DEFAULT_CODE)
-const meshData = ref('')
-const modelName = ref('未命名模型')
-const statusText = ref('就绪')
-const statusType = ref('idle')
 const sidebarVisible = ref(true)
 const toolsVisible = ref(true)
-
 const showNewModel = ref(false)
 const showExport = ref(false)
 const showTemplates = ref(false)
 const showExamples = ref(false)
 
-const models = ref([])
 const templates = ref(TEMPLATES)
 
 onMounted(() => {
+  editorCode.value = DEFAULT_CODE
   loadModels()
   window.addEventListener('keydown', handleKeydown)
 })
@@ -177,135 +172,34 @@ function handleKeydown(e) {
   }
 }
 
-async function runCode() {
-  statusText.value = '执行中...'
-  statusType.value = 'running'
-  try {
-    const result = await executeCode(editorCode.value)
-    if (result.stl) {
-      meshData.value = result.stl
-      statusText.value = '执行成功'
-      statusType.value = 'success'
-    } else if (result.error) {
-      statusText.value = result.error
-      statusType.value = 'error'
-    } else {
-      statusText.value = '执行成功'
-      statusType.value = 'success'
-    }
-  } catch (e) {
-    statusText.value = e.message || '执行失败'
-    statusType.value = 'error'
-  }
+function handleOpenModel(id) {
+  openModel(id, editorCode, meshData)
 }
 
-async function loadModels() {
-  try {
-    models.value = await getModels()
-  } catch (e) {
-    console.error('加载模型列表失败:', e)
-  }
+function handleSave() {
+  saveModel(editorCode, setStatus)
 }
 
-async function openModel(id) {
-  try {
-    const data = await getModelCode(id)
-    currentModelId.value = id
-    editorCode.value = data.code || ''
-    const model = models.value.find(m => m.id === id)
-    modelName.value = model ? model.name : '未命名模型'
-  } catch (e) {
-    console.error('加载模型失败:', e)
-  }
+async function handleCreateModel(name) {
+  const ok = await createNewModel(name, editorCode, meshData, setStatus)
+  if (ok) showNewModel.value = false
 }
 
-async function saveModel() {
-  try {
-    if (currentModelId.value) {
-      await updateModel(currentModelId.value, { name: modelName.value, code: editorCode.value })
-      statusText.value = '保存成功'
-      statusType.value = 'success'
-    } else {
-      const result = await createModel(modelName.value, editorCode.value)
-      currentModelId.value = result.id
-      statusText.value = '保存成功'
-      statusType.value = 'success'
-    }
-    await loadModels()
-  } catch (e) {
-    statusText.value = e.message || '保存失败'
-    statusType.value = 'error'
-  }
+function handleDeleteModel(id) {
+  deleteModelById(id, editorCode, meshData)
 }
 
-async function createNewModel(name) {
-  try {
-    const result = await createModel(name, DEFAULT_CODE)
-    currentModelId.value = result.id
-    modelName.value = name
-    editorCode.value = DEFAULT_CODE
-    meshData.value = ''
-    showNewModel.value = false
-    await loadModels()
-  } catch (e) {
-    console.error('创建模型失败:', e)
-  }
-}
-
-async function deleteModel(id) {
-  try {
-    await apiDeleteModel(id)
-    if (currentModelId.value === id) {
-      currentModelId.value = null
-      modelName.value = '未命名模型'
-      editorCode.value = DEFAULT_CODE
-      meshData.value = ''
-    }
-    await loadModels()
-  } catch (e) {
-    console.error('删除模型失败:', e)
-  }
-}
-
-async function exportModel(format) {
-  try {
-    const result = await apiExportModel(editorCode.value, format)
-    if (result.url) {
-      const a = document.createElement('a')
-      a.href = result.url
-      a.download = `${modelName.value}.${format}`
-      a.click()
-    } else if (result.data) {
-      const binaryStr = atob(result.data)
-      const bytes = new Uint8Array(binaryStr.length)
-      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i)
-      const blob = new Blob([bytes], { type: format === 'stl' ? 'application/sla' : 'application/step' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${modelName.value}.${format}`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-    showExport.value = false
-    statusText.value = '导出成功'
-    statusType.value = 'success'
-  } catch (e) {
-    statusText.value = e.message || '导出失败'
-    statusType.value = 'error'
-  }
+async function handleExport(format) {
+  const ok = await exportModel(format, modelName.value)
+  if (ok) showExport.value = false
 }
 
 function insertCode(code) {
-  if (editorRef.value) {
-    editorRef.value.insertCode(code)
-  }
+  if (editorRef.value) editorRef.value.insertCode(code)
 }
 
 function resetView() {
-  if (viewerRef.value) {
-    viewerRef.value.resetView()
-  }
+  if (viewerRef.value) viewerRef.value.resetView()
 }
 
 function onTemplateSelect(template) {

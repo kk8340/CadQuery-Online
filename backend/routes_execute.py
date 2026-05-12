@@ -1,6 +1,7 @@
 import os
 import base64
 import tempfile
+import math
 
 from fastapi import APIRouter
 
@@ -15,6 +16,21 @@ except ImportError:
     print("警告: CadQuery 未安装，部分功能将不可用")
     cq = None
 
+SAFE_BUILTINS = {
+    'abs': abs, 'all': all, 'any': any, 'bin': bin, 'bool': bool,
+    'chr': chr, 'complex': complex, 'dict': dict, 'divmod': divmod,
+    'enumerate': enumerate, 'filter': filter, 'float': float,
+    'format': format, 'frozenset': frozenset, 'hash': hash,
+    'hex': hex, 'id': id, 'int': int, 'isinstance': isinstance,
+    'len': len, 'list': list, 'map': map, 'max': max, 'min': min,
+    'oct': oct, 'ord': ord, 'pow': pow, 'print': print,
+    'range': range, 'repr': repr, 'reversed': reversed,
+    'round': round, 'set': set, 'slice': slice, 'sorted': sorted,
+    'str': str, 'sum': sum, 'tuple': tuple, 'type': type,
+    'zip': zip, 'True': True, 'False': False, 'None': None,
+    'math': math,
+}
+
 
 def execute_and_extract_result(code: str):
     if cq is None:
@@ -26,6 +42,7 @@ def execute_and_extract_result(code: str):
 
     try:
         namespace = {
+            '__builtins__': SAFE_BUILTINS,
             'cq': cq,
             'cadquery': cq,
         }
