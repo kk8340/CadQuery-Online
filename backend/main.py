@@ -1,13 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
-from backend.config import FRONTEND_DIR
 from backend.routes_models import router as models_router
 from backend.routes_execute import router as execute_router
 from backend.routes_static import router as static_router
 
-app = FastAPI(title="CadQuery Online", version="1.2.0")
+app = FastAPI(title="CadQuery Online", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,8 +18,6 @@ app.add_middleware(
 app.include_router(models_router)
 app.include_router(execute_router)
 app.include_router(static_router)
-
-app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
 
 if __name__ == "__main__":
     import uvicorn

@@ -3,17 +3,12 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from backend.config import FRONTEND_DIR, DOCS_FILE, DOCS_DATA_FILE, MONACO_DIR, EXAMPLES_FILE
+from backend.config import DOCS_FILE, DOCS_DATA_FILE, EXAMPLES_FILE
 
 router = APIRouter(tags=["static"])
 
 _examples_cache = None
 _docs_data_cache = None
-
-
-@router.get("/")
-async def root():
-    return FileResponse(FRONTEND_DIR / "index.html")
 
 
 @router.get("/docs.html")
@@ -33,14 +28,6 @@ async def serve_docs_data():
             _docs_data_cache = {}
 
     return _docs_data_cache
-
-
-@router.get("/monaco-editor/{path:path}")
-async def serve_monaco(path: str):
-    file_path = MONACO_DIR / path
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(file_path)
 
 
 @router.get("/api/examples")
