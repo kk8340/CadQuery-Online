@@ -1,1 +1,0 @@
-result = cq.Workplane("XY").box(20, 20, 10)

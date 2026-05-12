@@ -1,4 +1,9 @@
 *.png
 *.zip
-check_layout.py
+__pycache__/
+data/
+node_modules/
+dist/
+.DS_Store
+*.pyc
 临时下载目录/
