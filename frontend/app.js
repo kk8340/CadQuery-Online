@@ -1,8 +1,151 @@
 const API_BASE = '/api';
 
+// 全局工具提示管理器
+let globalTooltip = null;
+let tooltipTimeout = null;
+
+function showGlobalTooltip(btn) {
+    const tooltipEl = btn.querySelector('.tooltip');
+    if (!tooltipEl) return;
+    
+    clearTimeout(tooltipTimeout);
+    
+    // 移动tooltip到全局容器
+    if (!globalTooltip) {
+        globalTooltip = document.createElement('div');
+        globalTooltip.id = 'global-tooltip';
+        document.getElementById('tooltip-container').appendChild(globalTooltip);
+    }
+    
+    // 复制tooltip内容
+    globalTooltip.innerHTML = tooltipEl.innerHTML;
+    globalTooltip.style.cssText = `
+        position: fixed;
+        background: #1e293b;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        padding: 12px;
+        min-width: 240px;
+        max-width: 320px;
+        z-index: 9999;
+        pointer-events: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        opacity: 1;
+        visibility: visible;
+    `;
+    
+    // 计算位置
+    const rect = btn.getBoundingClientRect();
+    globalTooltip.style.left = (rect.right + 10) + 'px';
+    globalTooltip.style.top = rect.top + 'px';
+    
+    // 确保不超出右边界
+    const tooltipRect = globalTooltip.getBoundingClientRect();
+    if (tooltipRect.right > window.innerWidth) {
+        globalTooltip.style.left = (rect.left - tooltipRect.width - 10) + 'px';
+    }
+    
+    // 确保不超出下边界
+    if (tooltipRect.bottom > window.innerHeight) {
+        globalTooltip.style.top = (window.innerHeight - tooltipRect.height - 10) + 'px';
+    }
+}
+
+function hideGlobalTooltip() {
+    tooltipTimeout = setTimeout(() => {
+        if (globalTooltip) {
+            globalTooltip.style.opacity = '0';
+            globalTooltip.style.visibility = 'hidden';
+        }
+    }, 100);
+}
+
+// 工具栏折叠/展开功能
+function toggleToolSection(header) {
+    const section = header.closest('.tool-section');
+    if (!section) return;
+    
+    section.classList.toggle('collapsed');
+    
+    // 保存折叠状态到localStorage
+    const sectionId = section.getAttribute('data-section');
+    if (sectionId) {
+        const state = section.classList.contains('collapsed');
+        localStorage.setItem('tool_section_' + sectionId, state);
+    }
+}
+
+// 暴露给全局作用域（用于HTML onclick）
+window.toggleToolSection = toggleToolSection;
+
+// 恢复工具栏折叠状态
+function restoreToolSectionStates() {
+    const sections = document.querySelectorAll('.tool-section[data-section]');
+    sections.forEach(section => {
+        const sectionId = section.getAttribute('data-section');
+        const savedState = localStorage.getItem('tool_section_' + sectionId);
+        if (savedState === 'true') {
+            section.classList.add('collapsed');
+        } else {
+            section.classList.remove('collapsed');
+        }
+    });
+}
+
+// 初始化工具按钮事件
+function initToolButtons() {
+    const buttons = document.querySelectorAll('.tool-btn');
+    buttons.forEach(btn => {
+        // 鼠标进入显示提示
+        btn.addEventListener('mouseenter', function() {
+            showGlobalTooltip(this);
+        });
+        
+        // 鼠标离开隐藏提示
+        btn.addEventListener('mouseleave', function() {
+            hideGlobalTooltip();
+        });
+    });
+}
+
+// 前端缓存 - 以空间换时间
+const CACHE_KEYS = {
+    EXAMPLES: 'cq_examples_cache',
+    MODELS: 'cq_models_cache'
+};
+const CACHE_TTL = 5 * 60 * 1000; // 5分钟
+
 let examplesData = { examples: [], categories: [] };
 let currentCategory = 'all';
 let selectedExample = null;
+
+// 缓存工具函数
+function getCachedData(key) {
+    try {
+        const cached = localStorage.getItem(key);
+        if (!cached) return null;
+        
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp > CACHE_TTL) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        return data;
+    } catch (e) {
+        return null;
+    }
+}
+
+function setCachedData(key, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify({
+            data,
+            timestamp: Date.now()
+        }));
+    } catch (e) {
+        console.warn('Cache write failed:', e);
+    }
+}
 
 const TEMPLATES = [
     {
@@ -89,6 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadModels();
     setupEventListeners();
     setupTemplates();
+    restoreToolSectionStates();
+    initToolButtons();
     
     // 立即初始化编辑器
     setTimeout(() => {
@@ -432,8 +577,20 @@ async function runCode() {
 }
 
 function loadMesh(meshData) {
+    // 完全清理旧模型资源，防止内存泄漏
     if (currentMesh) {
+        if (currentMesh.geometry) {
+            currentMesh.geometry.dispose();
+        }
+        if (currentMesh.material) {
+            if (Array.isArray(currentMesh.material)) {
+                currentMesh.material.forEach(m => m.dispose());
+            } else {
+                currentMesh.material.dispose();
+            }
+        }
         scene.remove(currentMesh);
+        currentMesh = null;
     }
     
     const stlData = atob(meshData);
@@ -478,9 +635,19 @@ async function loadModels() {
     try {
         const response = await fetch(`${API_BASE}/models`);
         const models = await response.json();
+        
+        // 缓存模型列表
+        setCachedData(CACHE_KEYS.MODELS, models);
+        
         renderModelList(models);
     } catch (err) {
-        renderModelList([]);
+        // 尝试从缓存加载
+        const cached = getCachedData(CACHE_KEYS.MODELS);
+        if (cached) {
+            renderModelList(cached);
+        } else {
+            renderModelList([]);
+        }
     }
 }
 
@@ -662,8 +829,21 @@ async function openExamples() {
 
 async function loadExamples() {
     try {
+        // 先检查缓存
+        const cached = getCachedData(CACHE_KEYS.EXAMPLES);
+        if (cached) {
+            examplesData = cached;
+            renderCategories();
+            renderExamples();
+            return;
+        }
+        
         const response = await fetch(`${API_BASE}/examples`);
         examplesData = await response.json();
+        
+        // 缓存结果
+        setCachedData(CACHE_KEYS.EXAMPLES, examplesData);
+        
         renderCategories();
         renderExamples();
     } catch (err) {

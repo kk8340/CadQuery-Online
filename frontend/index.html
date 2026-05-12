@@ -105,14 +105,51 @@
             padding-bottom: 8px;
         }
         
+        .tool-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 8px 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .tool-section-header:hover {
+            background: rgba(6, 182, 212, 0.1);
+        }
+        
         .tool-section-title {
             font-size: 11px;
             font-weight: 600;
             color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 6px;
-            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .tool-section-toggle {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s ease;
+            color: #64748b;
+        }
+        
+        .tool-section.collapsed .tool-section-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .tool-section-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            max-height: 1000px;
+        }
+        
+        .tool-section.collapsed .tool-section-content {
+            max-height: 0;
         }
         
         .tool-grid {
@@ -131,6 +168,8 @@
             cursor: pointer;
             transition: all 0.2s ease;
             text-align: center;
+            position: relative;
+            z-index: 1;
         }
         
         .tool-btn:hover {
@@ -143,6 +182,79 @@
         .tool-btn:active {
             transform: translateY(0);
             background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        }
+        
+        .tooltip {
+            position: absolute;
+            left: 100%;
+            top: 0;
+            margin-left: 8px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 240px;
+            max-width: 320px;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .tool-btn:hover .tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .tooltip::before {
+            content: '';
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            border-right-color: #1e293b;
+        }
+        
+        .tooltip-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #06b6d4;
+            margin-bottom: 6px;
+        }
+        
+        .tooltip-desc {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .tooltip-code {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #a5f3fc;
+            overflow-x: auto;
+        }
+        
+        .tooltip-example {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #334155;
+        }
+        
+        .tooltip-example-label {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         
         #editor-tools {
@@ -183,6 +295,7 @@
     </style>
 </head>
 <body class="h-screen overflow-hidden">
+    <div id="tooltip-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></div>
     <!-- Header -->
     <header class="h-16 bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700 flex items-center justify-between px-6">
         <div class="flex items-center gap-3">
@@ -297,146 +410,689 @@
                     </div>
                     <div class="flex-1 flex">
                         <!-- Editor Tools Sidebar -->
-                        <div id="editor-tools" class="w-64 bg-slate-900/30 border-r border-slate-700 overflow-y-auto">
-                            <div class="p-2 space-y-2">
+                        <div id="editor-tools" class="w-72 bg-slate-900/30 border-r border-slate-700 overflow-y-auto overflow-x-visible" style="overflow-x: visible;">
+                            <div class="p-3 space-y-2">
                                 <!-- 基本形状 -->
-                                <div class="tool-section">
-                                    <div class="tool-section-title">📦 基本形状</div>
-                                    <div class="tool-grid">
-                                        <button class="tool-btn" data-code="cq.Workplane().box(20, 20, 10)" title="长方体">
-                                            <span>Box</span>
-                                        </button>
-                                        <button class="tool-btn" data-code="cq.Workplane().circle(10).extrude(20)" title="圆柱体">
-                                            <span>Circle</span>
-                                        </button>
-                                        <button class="tool-btn" data-code="cq.Workplane().sphere(10)" title="球体">
-                                            <span>Sphere</span>
-                                        </button>
-                                        <button class="tool-btn" data-code="cq.Workplane().polygon(6, 10)" title="多边形">
-                                            <span>Polygon</span>
-                                        </button>
-                                        <button class="tool-btn" data-code="cq.Workplane().ellipse(20, 10).extrude(5)" title="椭圆">
-                                            <span>Ellipse</span>
-                                        </button>
-                                        <button class="tool-btn" data-code="cq.Workplane().torus(10, 3)" title="圆环">
-                                            <span>Torus</span>
-                                        </button>
+                                <div class="tool-section" data-section="shapes">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>📦</span>
+                                            <span>基本形状</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code="cq.Workplane().box(20, 20, 10)">
+                                                <span>Box</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">长方体 (Box)</div>
+                                                    <div class="tooltip-desc">创建一个长方体，可以指定长、宽、高参数</div>
+                                                    <div class="tooltip-code">cq.Workplane().box(20, 20, 10)</div>
+                                                    <div class="tooltip-example">
+                                                        <div class="tooltip-example-label">参数说明</div>
+                                                        <div class="tooltip-code">box(length, width, height)</div>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="cq.Workplane().circle(10).extrude(20)">
+                                                <span>Cylinder</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">圆柱体 (Cylinder)</div>
+                                                    <div class="tooltip-desc">创建圆形草图后拉伸成圆柱体</div>
+                                                    <div class="tooltip-code">cq.Workplane().circle(10).extrude(20)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="cq.Workplane().sphere(10)">
+                                                <span>Sphere</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">球体 (Sphere)</div>
+                                                    <div class="tooltip-desc">创建一个完整的球体</div>
+                                                    <div class="tooltip-code">cq.Workplane().sphere(10)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="cq.Workplane().polygon(6, 10).extrude(10)">
+                                                <span>Polygon</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">多边形棱柱</div>
+                                                    <div class="tooltip-desc">创建正多边形并拉伸成棱柱</div>
+                                                    <div class="tooltip-code">polygon(6, 10).extrude(10)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="cq.Workplane().ellipse(20, 10).extrude(5)">
+                                                <span>Ellipse</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">椭圆柱体</div>
+                                                    <div class="tooltip-desc">创建椭圆并拉伸成柱体</div>
+                                                    <div class="tooltip-code">ellipse(20, 10).extrude(5)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="cq.Workplane().torus(10, 3)">
+                                                <span>Torus</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">圆环 (Torus)</div>
+                                                    <div class="tooltip-desc">创建一个圆环体</div>
+                                                    <div class="tooltip-code">cq.Workplane().torus(10, 3)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="cq.Workplane().wedge(10, 10, 10)">
+                                                <span>Wedge</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">楔形体 (Wedge)</div>
+                                                    <div class="tooltip-desc">创建一个直角楔形块</div>
+                                                    <div class="tooltip-code">wedge(10, 10, 10)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="cq.Workplane().cylinder(20, 10)">
+                                                <span>Cyl2</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">圆柱体 (Direct)</div>
+                                                    <div class="tooltip-desc">直接创建圆柱体的快捷方式</div>
+                                                    <div class="tooltip-code">cq.Workplane().cylinder(20, 10)</div>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <!-- 草图工具 -->
-                                <div class="tool-section">
-                                    <div class="tool-section-title">✏️ 草图工具</div>
-                                    <div class="tool-grid">
-                                        <button class="tool-btn" data-code=".moveTo(x, y)" title="移动到">
-                                            <span>moveTo</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".lineTo(x, y)" title="画线到">
-                                            <span>lineTo</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".vLine(distance)" title="垂直线">
-                                            <span>vLine</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".hLine(distance)" title="水平线">
-                                            <span>hLine</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".rect(width, height)" title="矩形">
-                                            <span>rect</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".close()" title="闭合">
-                                            <span>close</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".center(x, y)" title="中心">
-                                            <span>center</span>
-                                        </button>
+                                <div class="tool-section" data-section="sketch">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>✏️</span>
+                                            <span>草图工具</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code=".moveTo(x, y)">
+                                                <span>moveTo</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">移动到 (moveTo)</div>
+                                                    <div class="tooltip-desc">将当前点移动到指定坐标，不画线</div>
+                                                    <div class="tooltip-code">.moveTo(x, y)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".lineTo(x, y)">
+                                                <span>lineTo</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">画线到 (lineTo)</div>
+                                                    <div class="tooltip-desc">从当前点画直线到目标坐标</div>
+                                                    <div class="tooltip-code">.lineTo(x, y)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".vLine(distance)">
+                                                <span>vLine</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">垂直线 (vLine)</div>
+                                                    <div class="tooltip-desc">画一条垂直方向的线段</div>
+                                                    <div class="tooltip-code">.vLine(distance)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".hLine(distance)">
+                                                <span>hLine</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">水平线 (hLine)</div>
+                                                    <div class="tooltip-desc">画一条水平方向的线段</div>
+                                                    <div class="tooltip-code">.hLine(distance)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".vLineTo(y)">
+                                                <span>vLineTo</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">垂直到 (vLineTo)</div>
+                                                    <div class="tooltip-desc">画垂直线到指定Y坐标</div>
+                                                    <div class="tooltip-code">.vLineTo(y)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".hLineTo(x)">
+                                                <span>hLineTo</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">水平到 (hLineTo)</div>
+                                                    <div class="tooltip-desc">画水平线到指定X坐标</div>
+                                                    <div class="tooltip-code">.hLineTo(x)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".rect(width, height)">
+                                                <span>rect</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">矩形 (rect)</div>
+                                                    <div class="tooltip-desc">在当前位置创建矩形</div>
+                                                    <div class="tooltip-code">.rect(width, height)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".circle(radius)">
+                                                <span>circle</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">圆 (circle)</div>
+                                                    <div class="tooltip-desc">在当前位置创建圆形</div>
+                                                    <div class="tooltip-code">.circle(radius)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".ellipse(x_radius, y_radius)">
+                                                <span>ellipse</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">椭圆 (ellipse)</div>
+                                                    <div class="tooltip-desc">创建椭圆草图</div>
+                                                    <div class="tooltip-code">.ellipse(x_radius, y_radius)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".spline(points)">
+                                                <span>spline</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">样条曲线 (spline)</div>
+                                                    <div class="tooltip-desc">通过一系列点创建平滑曲线</div>
+                                                    <div class="tooltip-code">.spline([(0,0), (1,2), (2,1)])</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".arc(start, end, radius)">
+                                                <span>arc</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">圆弧 (arc)</div>
+                                                    <div class="tooltip-desc">创建圆弧连接两个点</div>
+                                                    <div class="tooltip-code">.arc(start, end, radius)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".close()">
+                                                <span>close</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">闭合 (close)</div>
+                                                    <div class="tooltip-desc">将当前路径闭合，连接首尾</div>
+                                                    <div class="tooltip-code">.close()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".center(x, y)">
+                                                <span>center</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">中心点 (center)</div>
+                                                    <div class="tooltip-desc">移动工作中心点</div>
+                                                    <div class="tooltip-code">.center(x, y)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".pushPoints([(x1,y1), (x2,y2)])">
+                                                <span>pushPoints</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">推点 (pushPoints)</div>
+                                                    <div class="tooltip-desc">添加多个工作点用于后续操作</div>
+                                                    <div class="tooltip-code">.pushPoints([(10,0), (-10,0)])</div>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <!-- 建模操作 -->
-                                <div class="tool-section">
-                                    <div class="tool-section-title">🔧 建模操作</div>
-                                    <div class="tool-grid">
-                                        <button class="tool-btn" data-code=".extrude(height)" title="拉伸">
-                                            <span>extrude</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".revolve(angle, axisStart, axisEnd)" title="旋转">
-                                            <span>revolve</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".sweep(path)" title="扫掠">
-                                            <span>sweep</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".loft()" title="放样">
-                                            <span>loft</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".shell(thickness)" title="抽壳">
-                                            <span>shell</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".fillet(radius)" title="圆角">
-                                            <span>fillet</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".chamfer(radius)" title="倒角">
-                                            <span>chamfer</span>
-                                        </button>
+                                <div class="tool-section" data-section="modeling">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>🔧</span>
+                                            <span>建模操作</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code=".extrude(height)">
+                                                <span>extrude</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">拉伸 (extrude)</div>
+                                                    <div class="tooltip-desc">将2D草图沿法线方向拉伸成3D实体</div>
+                                                    <div class="tooltip-code">.extrude(20)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".extrudeUntil(nextObj)">
+                                                <span>extrudeUntil</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">拉伸至 (extrudeUntil)</div>
+                                                    <div class="tooltip-desc">拉伸直到接触到另一个对象</div>
+                                                    <div class="tooltip-code">.extrudeUntil(nextObj)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".revolve(angleDegrees)">
+                                                <span>revolve</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">旋转 (revolve)</div>
+                                                    <div class="tooltip-desc">将草图绕轴旋转生成实体</div>
+                                                    <div class="tooltip-code">.revolve(360)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".sweep(path)">
+                                                <span>sweep</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">扫掠 (sweep)</div>
+                                                    <div class="tooltip-desc">将截面沿路径扫掠生成实体</div>
+                                                    <div class="tooltip-code">.sweep(path_object)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".loft()">
+                                                <span>loft</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">放样 (loft)</div>
+                                                    <div class="tooltip-desc">通过多个截面轮廓生成平滑过渡的实体</div>
+                                                    <div class="tooltip-code">.loft()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".shell(thickness)">
+                                                <span>shell</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">抽壳 (shell)</div>
+                                                    <div class="tooltip-desc">将实体变为空心壳体</div>
+                                                    <div class="tooltip-code">.shell(2)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".fillet(radius)">
+                                                <span>fillet</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">圆角 (fillet)</div>
+                                                    <div class="tooltip-desc">在选定边上创建圆角</div>
+                                                    <div class="tooltip-code">.edges().fillet(2)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".chamfer(radius)">
+                                                <span>chamfer</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">倒角 (chamfer)</div>
+                                                    <div class="tooltip-desc">在选定边上创建45度倒角</div>
+                                                    <div class="tooltip-code">.edges().chamfer(2)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".offset2D(distance)">
+                                                <span>offset2D</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">偏移 (offset2D)</div>
+                                                    <div class="tooltip-desc">将2D草图向内或向外偏移</div>
+                                                    <div class="tooltip-code">.offset2D(2)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".thicken(amount)">
+                                                <span>thicken</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">加厚 (thicken)</div>
+                                                    <div class="tooltip-desc">将面或壳加厚成实体</div>
+                                                    <div class="tooltip-code">.thicken(5)</div>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <!-- 选择器 -->
-                                <div class="tool-section">
-                                    <div class="tool-section-title">🎯 选择器</div>
-                                    <div class="tool-grid">
-                                        <button class="tool-btn" data-code=".faces('>Z')" title="顶面">
-                                            <span>>Z (top)</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".faces('<Z')" title="底面">
-                                            <span><Z (bottom)</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".edges()" title="所有边">
-                                            <span>edges</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".vertices()" title="所有顶点">
-                                            <span>vertices</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".workplane()" title="工作平面">
-                                            <span>workplane</span>
-                                        </button>
+                                <div class="tool-section" data-section="selection">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>🎯</span>
+                                            <span>选择器</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code=".faces('>Z')">
+                                                <span>>Z (top)</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">顶面选择</div>
+                                                    <div class="tooltip-desc">选择Z轴正方向最上方的面</div>
+                                                    <div class="tooltip-code">.faces('>Z')</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".faces('<Z')">
+                                                <span><Z (bottom)</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">底面选择</div>
+                                                    <div class="tooltip-desc">选择Z轴负方向最下方的面</div>
+                                                    <div class="tooltip-code">.faces('<Z')</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".faces('|Z')">
+                                                <span>|Z (side)</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">Z方向垂直面</div>
+                                                    <div class="tooltip-desc">选择所有垂直于Z轴的面</div>
+                                                    <div class="tooltip-code">.faces('|Z')</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".faces('+Z')">
+                                                <span>+Z</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">所有Z方向面</div>
+                                                    <div class="tooltip-desc">选择所有在Z方向的面</div>
+                                                    <div class="tooltip-code">.faces('+Z')</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".edges()">
+                                                <span>edges</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">所有边</div>
+                                                    <div class="tooltip-desc">选择实体的所有边</div>
+                                                    <div class="tooltip-code">.edges()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".vertices()">
+                                                <span>vertices</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">所有顶点</div>
+                                                    <div class="tooltip-desc">选择实体的所有顶点</div>
+                                                    <div class="tooltip-code">.vertices()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".solids()">
+                                                <span>solids</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">所有实体</div>
+                                                    <div class="tooltip-desc">选择所有实体</div>
+                                                    <div class="tooltip-code">.solids()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".workplane(offset=0)">
+                                                <span>workplane</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">工作平面</div>
+                                                    <div class="tooltip-desc">在选中面上创建新的工作平面</div>
+                                                    <div class="tooltip-code">.faces('>Z').workplane()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".wires()">
+                                                <span>wires</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">线框</div>
+                                                    <div class="tooltip-desc">选择所有闭合的线框</div>
+                                                    <div class="tooltip-code">.wires()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".first()">
+                                                <span>first</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">第一个</div>
+                                                    <div class="tooltip-desc">只选择列表中的第一个元素</div>
+                                                    <div class="tooltip-code">.faces().first()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".last()">
+                                                <span>last</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">最后一个</div>
+                                                    <div class="tooltip-desc">只选择列表中的最后一个元素</div>
+                                                    <div class="tooltip-code">.faces().last()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".item(index)">
+                                                <span>item</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">指定索引</div>
+                                                    <div class="tooltip-desc">选择指定索引的元素</div>
+                                                    <div class="tooltip-code">.faces().item(0)</div>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <!-- 布尔运算 -->
-                                <div class="tool-section">
-                                    <div class="tool-section-title">🔀 布尔运算</div>
-                                    <div class="tool-grid">
-                                        <button class="tool-btn" data-code=".union(other)" title="合并">
-                                            <span>union</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".cut(other)" title="减切">
-                                            <span>cut</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".intersect(other)" title="交集">
-                                            <span>intersect</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".hole(diameter, depth)" title="孔">
-                                            <span>hole</span>
-                                        </button>
+                                <div class="tool-section" data-section="boolean">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>🔀</span>
+                                            <span>布尔运算</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code=".union(other)">
+                                                <span>union</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">合并 (union)</div>
+                                                    <div class="tooltip-desc">将两个实体合并为一个</div>
+                                                    <div class="tooltip-code">obj1.union(obj2)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".cut(other)">
+                                                <span>cut</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">减切 (cut)</div>
+                                                    <div class="tooltip-desc">从一个实体减去另一个实体</div>
+                                                    <div class="tooltip-code">obj1.cut(obj2)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".intersect(other)">
+                                                <span>intersect</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">交集 (intersect)</div>
+                                                    <div class="tooltip-desc">保留两个实体重叠的部分</div>
+                                                    <div class="tooltip-code">obj1.intersect(obj2)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".hole(diameter)">
+                                                <span>hole</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">孔 (hole)</div>
+                                                    <div class="tooltip-desc">在当前位置打通孔</div>
+                                                    <div class="tooltip-code">.hole(5)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".hole(diameter, depth)">
+                                                <span>blindHole</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">盲孔</div>
+                                                    <div class="tooltip-desc">打指定深度的盲孔</div>
+                                                    <div class="tooltip-code">.hole(5, depth=10)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".cboreHole(holeD, cboreD, cboreDepth)">
+                                                <span>cboreHole</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">沉头孔</div>
+                                                    <div class="tooltip-desc">创建用于螺栓头的沉头孔</div>
+                                                    <div class="tooltip-code">.cboreHole(3, 6, 3)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".counterSinkHole(holeD, csinkD, csinkAngle)">
+                                                <span>csinkHole</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">倒角孔</div>
+                                                    <div class="tooltip-desc">创建用于沉头螺钉的倒角孔</div>
+                                                    <div class="tooltip-code">.counterSinkHole(3, 6, 82)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".boss(extent, diameter)">
+                                                <span>boss</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">凸台 (boss)</div>
+                                                    <div class="tooltip-desc">创建圆柱形凸台</div>
+                                                    <div class="tooltip-code">.boss(10, 5)</div>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <!-- 变换 -->
-                                <div class="tool-section">
-                                    <div class="tool-section-title">🔄 变换</div>
-                                    <div class="tool-grid">
-                                        <button class="tool-btn" data-code=".translate((dx, dy, dz))" title="平移">
-                                            <span>translate</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".rotate((0,0,0), (0,0,1), angle)" title="旋转">
-                                            <span>rotate</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".scale(factor)" title="缩放">
-                                            <span>scale</span>
-                                        </button>
-                                        <button class="tool-btn" data-code=".mirror(mirrorPlane)" title="镜像">
-                                            <span>mirror</span>
-                                        </button>
+                                <div class="tool-section" data-section="transform">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>🔄</span>
+                                            <span>变换</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code=".translate((dx, dy, dz))">
+                                                <span>translate</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">平移 (translate)</div>
+                                                    <div class="tooltip-desc">沿XYZ方向移动实体</div>
+                                                    <div class="tooltip-code">.translate((10, 5, 0))</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".rotate((x1,y1,z1), (x2,y2,z2), angle)">
+                                                <span>rotate</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">旋转 (rotate)</div>
+                                                    <div class="tooltip-desc">绕指定轴旋转实体</div>
+                                                    <div class="tooltip-code">.rotate((0,0,0), (0,0,1), 90)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".scale(factor)">
+                                                <span>scale</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">缩放 (scale)</div>
+                                                    <div class="tooltip-desc">等比例缩放实体</div>
+                                                    <div class="tooltip-code">.scale(0.5)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".mirror(plane='YZ')">
+                                                <span>mirror</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">镜像 (mirror)</div>
+                                                    <div class="tooltip-desc">沿指定平面对称复制</div>
+                                                    <div class="tooltip-code">.mirror('YZ')</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".copyWorkplane(other)">
+                                                <span>copyWorkplane</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">复制工作平面</div>
+                                                    <div class="tooltip-desc">从另一个对象复制工作平面</div>
+                                                    <div class="tooltip-code">.copyWorkplane(other)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".tag('name')">
+                                                <span>tag</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">标记 (tag)</div>
+                                                    <div class="tooltip-desc">给当前对象添加标签以便引用</div>
+                                                    <div class="tooltip-code">.tag('my_feature')</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".edges('|Z').size()">
+                                                <span>size</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">数量 (size)</div>
+                                                    <div class="tooltip-desc">返回选中元素的数量</div>
+                                                    <div class="tooltip-code">.edges().size()</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".val()">
+                                                <span>val</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">取值 (val)</div>
+                                                    <div class="tooltip-desc">获取最上层的几何对象</div>
+                                                    <div class="tooltip-code">.val()</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 数组与重复 -->
+                                <div class="tool-section" data-section="array">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>📐</span>
+                                            <span>阵列</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code=".rectArray(xSpacing, ySpacing, xCount, yCount)">
+                                                <span>rectArray</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">矩形阵列</div>
+                                                    <div class="tooltip-desc">创建矩形网格排列的多个副本</div>
+                                                    <div class="tooltip-code">.rectArray(20, 20, 3, 3)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".polarArray(radius, angleCount, startAngle=0)">
+                                                <span>polarArray</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">环形阵列</div>
+                                                    <div class="tooltip-desc">创建圆周排列的多个副本</div>
+                                                    <div class="tooltip-code">.polarArray(30, 6)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".polygonArray(nSides, diameter, startAngle=0)">
+                                                <span>polygonArray</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">多边形阵列</div>
+                                                    <div class="tooltip-desc">沿多边形顶点创建阵列</div>
+                                                    <div class="tooltip-code">.polygonArray(6, 40)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code=".rarray(xVector, yVector, xCount, yCount)">
+                                                <span>rarray</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">自定义向量阵列</div>
+                                                    <div class="tooltip-desc">使用自定义向量的阵列</div>
+                                                    <div class="tooltip-code">.rarray((20,0), (0,20), 3, 3)</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 文本与注释 -->
+                                <div class="tool-section collapsed" data-section="text">
+                                    <div class="tool-section-header" onclick="toggleToolSection(this)">
+                                        <div class="tool-section-title">
+                                            <span>📝</span>
+                                            <span>模板代码</span>
+                                        </div>
+                                        <svg class="tool-section-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="tool-section-content">
+                                        <div class="tool-grid pt-1">
+                                            <button class="tool-btn" data-code="result = cq.Workplane('XY').box(20, 20, 10)">
+                                                <span>Basic Box</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">基础长方体模板</div>
+                                                    <div class="tooltip-desc">快速创建一个简单的长方体</div>
+                                                    <div class="tooltip-code">result = cq.Workplane('XY').box(20, 20, 10)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="result = cq.Workplane('XY').circle(10).extrude(20).faces('>Z').workplane().hole(5)">
+                                                <span>Hole Block</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">带孔方块模板</div>
+                                                    <div class="tooltip-desc">圆柱体中心带通孔</div>
+                                                    <div class="tooltip-code">circle(10).extrude(20).hole(5)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="result = cq.Workplane('front').polyline([(0,0), (10,0), (10,10), (0,5)]).close().extrude(5)">
+                                                <span>Polyline</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">多边形拉伸模板</div>
+                                                    <div class="tooltip-desc">使用多段线创建自定义形状</div>
+                                                    <div class="tooltip-code">.polyline([...]).close().extrude(5)</div>
+                                                </div>
+                                            </button>
+                                            <button class="tool-btn" data-code="s = cq.Workplane('XY'); s.circle(50).rect(20, 20, forConstruction=True).vertices().hole(10); result = s.extrude(10)">
+                                                <span>Plate Holes</span>
+                                                <div class="tooltip">
+                                                    <div class="tooltip-title">多孔板模板</div>
+                                                    <div class="tooltip-desc">在矩形四个角打孔的安装板</div>
+                                                    <div class="tooltip-code">rect().vertices().hole(10)</div>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
