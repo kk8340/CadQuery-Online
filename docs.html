@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CadQuery 2 API 参考文档</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .monospace {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        pre {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            border: 1px solid #334155;
+            margin: 16px 0;
+        }
+        
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .hljs-keyword { color: #c084fc; }
+        .hljs-comment { color: #64748b; }
+        .hljs-string { color: #34d399; }
+        .hljs-number { color: #f472b6; }
+        
+        .nav-item {
+            padding: 10px 16px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .nav-item:hover {
+            background: rgba(6, 182, 212, 0.1);
+        }
+        
+        .nav-item.active {
+            background: rgba(6, 182, 212, 0.15);
+            color: #06b6d4;
+            border-left: 3px solid #06b6d4;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 20px 0 10px 0;
+            padding-left: 16px;
+        }
+        
+        .content-section {
+            padding: 20px 0;
+        }
+        
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #f1f5f9;
+        }
+        
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 32px 0 16px 0;
+            color: #e2e8f0;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 8px;
+        }
+        
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 24px 0 12px 0;
+            color: #e2e8f0;
+        }
+        
+        p {
+            line-height: 1.8;
+            color: #cbd5e1;
+            margin: 12px 0;
+        }
+        
+        a {
+            color: #06b6d4;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        
+        a:hover {
+            color: #22d3ee;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 18px;
+            color: #64748b;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 40px;
+            height: 40px;
+            margin-left: 16px;
+            border: 4px solid #334155;
+            border-top-color: #06b6d4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden">
+    <div id="app">
+        <div class="loading">加载文档中...</div>
+    </div>
+
+    <script>
+        let docsData = null;
+        
+        async function loadDocs() {
+            try {
+                const response = await fetch('docs_data.json');
+                docsData = await response.json();
+                renderApp();
+            } catch (error) {
+                console.error('加载文档失败:', error);
+                document.getElementById('app').innerHTML = `
+                    <div class="flex items-center justify-center h-screen">
+                        <div class="text-center">
+                            <div class="text-red-500 text-xl mb-4">❌ 加载文档失败</div>
+                            <div class="text-slate-400">${error.message}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderApp() {
+            const currentSlug = new URLSearchParams(window.location.search).get('page') || 'Sketch';
+            const doc = docsData.documents.find(d => d.slug === currentSlug) || docsData.documents[0];
+            
+            document.getElementById('app').innerHTML = `
+                <!-- Header -->
+                <header class="h-14 bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700 flex items-center justify-between px-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold">CadQuery 2 API 参考</h1>
+                        </div>
+                    </div>
+                    
+                    <button id="btn-close" class="px-4 py-2 rounded-lg text-sm font-medium btn-secondary flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        关闭
+                    </button>
+                </header>
+                
+                <div class="flex h-[calc(100vh-56px)]">
+                    <!-- Sidebar - Navigation -->
+                    <aside class="w-80 bg-slate-900/50 border-r border-slate-700 overflow-y-auto">
+                        <div class="p-4">
+                            <div class="section-title">CadQuery 2 API</div>
+                            ${docsData.navigation.map(item => `
+                                <div class="nav-item ${item.slug === doc.slug ? 'active' : ''}" 
+                                     onclick="navigateTo('${item.slug}')">
+                                    ${item.title}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </aside>
+                    
+                    <!-- Main Content -->
+                    <main class="flex-1 overflow-y-auto bg-slate-800/30">
+                        <div class="max-w-4xl mx-auto p-8">
+                            <div id="content-area"></div>
+                        </div>
+                    </main>
+                </div>
+            `;
+            
+            renderContent(doc);
+            setupEventListeners();
+        }
+        
+        function renderContent(doc) {
+            const contentArea = document.getElementById('content-area');
+            
+            // 处理HTML内容
+            let html = doc.html;
+            
+            // 处理代码块
+            html = html.replace(/<pre class="hljs"><code>(.*?)<\/code><\/pre>/gs, (match, code) => {
+                const cleanCode = code
+                    .replace(/<span class="hljs-keyword">/g, '<span class="hljs-keyword">')
+                    .replace(/<span class="hljs-comment">/g, '<span class="hljs-comment">')
+                    .replace(/<span class="hljs-string">/g, '<span class="hljs-string">')
+                    .replace(/<span class="hljs-number">/g, '<span class="hljs-number">');
+                return `<pre><code class="monospace">${cleanCode}</code></pre>`;
+            });
+            
+            // 处理内联代码
+            html = html.replace(/<code>([^<]+)<\/code>/g, '<code class="monospace bg-slate-700 px-1 py-0.5 rounded text-cyan-300">$1</code>');
+            
+            // 处理链接
+            html = html.replace(/<a href="([^"]+)">([^<]+)<\/a>/g, '<a href="$1" target="_blank">$2</a>');
+            
+            contentArea.innerHTML = html;
+            
+            // 滚动到顶部
+            contentArea.parentElement.scrollTop = 0;
+        }
+        
+        function navigateTo(slug) {
+            window.location.href = `?page=${slug}`;
+        }
+        
+        function setupEventListeners() {
+            const btnClose = document.getElementById('btn-close');
+            if (btnClose) {
+                btnClose.addEventListener('click', () => {
+                    window.close();
+                });
+            }
+        }
+        
+        // 加载文档
+        loadDocs();
+    </script>
+</body>
+</html>

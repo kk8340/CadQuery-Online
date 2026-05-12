@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CadQuery Online - 在线建模平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .monospace {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        #editor-container {
+            height: calc(100vh - 120px);
+            width: 100%;
+        }
+        
+        #viewer-container {
+            height: calc(100vh - 120px);
+            width: 100%;
+            position: relative;
+        }
+        
+        #viewer-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(31, 41, 55, 0.3);
+        }
+        
+        .card {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+        }
+        
+        .sidebar-item:hover {
+            background: rgba(6, 182, 212, 0.1);
+            border-left-color: #06b6d4;
+        }
+        
+        .sidebar-item.active {
+            background: rgba(6, 182, 212, 0.15);
+            border-left-color: #06b6d4;
+        }
+        
+        .status-success {
+            color: #10b981;
+        }
+        
+        .status-error {
+            color: #ef4444;
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .tool-section {
+            border-bottom: 1px solid #334155;
+            padding-bottom: 8px;
+        }
+        
+        .tool-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            padding: 4px 0;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4px;
+        }
+        
+        .tool-btn {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 11px;
+            color: #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        
+        .tool-btn:hover {
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+            border-color: #06b6d4;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.2);
+        }
+        
+        .tool-btn:active {
+            transform: translateY(0);
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        }
+        
+        #editor-tools {
+            transition: all 0.3s ease;
+        }
+        
+        #editor-tools.hidden {
+            width: 0;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .category-item {
+            color: #94a3b8;
+            transition: all 0.2s ease;
+        }
+        
+        .category-item:hover {
+            color: #e2e8f0;
+            background: rgba(6, 182, 212, 0.1);
+        }
+        
+        .category-item.active {
+            color: #06b6d4;
+            background: rgba(6, 182, 212, 0.15);
+            font-weight: 600;
+        }
+        
+        .example-card {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+        }
+        
+        .example-card:hover {
+            background: linear-gradient(145deg, #334155 0%, #1e293b 100%);
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden">
+    <!-- Header -->
+    <header class="h-16 bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700 flex items-center justify-between px-6">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold">CadQuery Online</h1>
+                <p class="text-xs text-slate-400">在线参数化建模平台</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button id="btn-docs" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                </svg>
+                API文档
+            </button>
+            <button id="btn-templates" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                模板
+            </button>
+            <button id="btn-examples" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                示例
+            </button>
+            <button id="btn-save" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                </svg>
+                保存
+            </button>
+            <button id="btn-export" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                导出
+            </button>
+        </div>
+    </header>
+    
+    <div class="flex h-[calc(100vh-64px)]">
+        <!-- Sidebar - Model List -->
+        <aside id="sidebar" class="w-72 bg-slate-900/50 border-r border-slate-700 flex flex-col transition-all duration-300">
+            <div class="p-4 border-b border-slate-700">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">我的模型</h2>
+                    <button id="btn-toggle-sidebar" class="text-slate-400 hover:text-white transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                </div>
+                <button id="btn-new-model" class="w-full btn-primary py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    新建模型
+                </button>
+            </div>
+            
+            <div id="model-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col">
+            <!-- Toolbar -->
+            <div class="h-10 bg-slate-800/50 border-b border-slate-700 flex items-center px-4 gap-3">
+                <button id="btn-expand-sidebar" class="hidden text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+                <button id="btn-back" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <span id="model-name" class="text-sm font-medium text-slate-300">未命名模型</span>
+                <div class="flex-1"></div>
+                <div id="status-bar" class="text-xs text-slate-400 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    就绪
+                </div>
+                <button id="btn-run" class="btn-primary px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    运行 (Ctrl+Enter)
+                </button>
+            </div>
+            
+            <!-- Split View -->
+            <div class="flex-1 flex">
+                <div class="flex-1 flex flex-col border-r border-slate-700">
+                    <div class="h-8 bg-slate-800/30 flex items-center px-4 border-b border-slate-700 justify-between">
+                        <span class="text-xs font-medium text-slate-400">代码编辑器</span>
+                        <button id="btn-toggle-tools" class="text-xs text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex-1 flex">
+                        <!-- Editor Tools Sidebar -->
+                        <div id="editor-tools" class="w-64 bg-slate-900/30 border-r border-slate-700 overflow-y-auto">
+                            <div class="p-2 space-y-2">
+                                <!-- 基本形状 -->
+                                <div class="tool-section">
+                                    <div class="tool-section-title">📦 基本形状</div>
+                                    <div class="tool-grid">
+                                        <button class="tool-btn" data-code="cq.Workplane().box(20, 20, 10)" title="长方体">
+                                            <span>Box</span>
+                                        </button>
+                                        <button class="tool-btn" data-code="cq.Workplane().circle(10).extrude(20)" title="圆柱体">
+                                            <span>Circle</span>
+                                        </button>
+                                        <button class="tool-btn" data-code="cq.Workplane().sphere(10)" title="球体">
+                                            <span>Sphere</span>
+                                        </button>
+                                        <button class="tool-btn" data-code="cq.Workplane().polygon(6, 10)" title="多边形">
+                                            <span>Polygon</span>
+                                        </button>
+                                        <button class="tool-btn" data-code="cq.Workplane().ellipse(20, 10).extrude(5)" title="椭圆">
+                                            <span>Ellipse</span>
+                                        </button>
+                                        <button class="tool-btn" data-code="cq.Workplane().torus(10, 3)" title="圆环">
+                                            <span>Torus</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 草图工具 -->
+                                <div class="tool-section">
+                                    <div class="tool-section-title">✏️ 草图工具</div>
+                                    <div class="tool-grid">
+                                        <button class="tool-btn" data-code=".moveTo(x, y)" title="移动到">
+                                            <span>moveTo</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".lineTo(x, y)" title="画线到">
+                                            <span>lineTo</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".vLine(distance)" title="垂直线">
+                                            <span>vLine</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".hLine(distance)" title="水平线">
+                                            <span>hLine</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".rect(width, height)" title="矩形">
+                                            <span>rect</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".close()" title="闭合">
+                                            <span>close</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".center(x, y)" title="中心">
+                                            <span>center</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 建模操作 -->
+                                <div class="tool-section">
+                                    <div class="tool-section-title">🔧 建模操作</div>
+                                    <div class="tool-grid">
+                                        <button class="tool-btn" data-code=".extrude(height)" title="拉伸">
+                                            <span>extrude</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".revolve(angle, axisStart, axisEnd)" title="旋转">
+                                            <span>revolve</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".sweep(path)" title="扫掠">
+                                            <span>sweep</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".loft()" title="放样">
+                                            <span>loft</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".shell(thickness)" title="抽壳">
+                                            <span>shell</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".fillet(radius)" title="圆角">
+                                            <span>fillet</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".chamfer(radius)" title="倒角">
+                                            <span>chamfer</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 选择器 -->
+                                <div class="tool-section">
+                                    <div class="tool-section-title">🎯 选择器</div>
+                                    <div class="tool-grid">
+                                        <button class="tool-btn" data-code=".faces('>Z')" title="顶面">
+                                            <span>>Z (top)</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".faces('<Z')" title="底面">
+                                            <span><Z (bottom)</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".edges()" title="所有边">
+                                            <span>edges</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".vertices()" title="所有顶点">
+                                            <span>vertices</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".workplane()" title="工作平面">
+                                            <span>workplane</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 布尔运算 -->
+                                <div class="tool-section">
+                                    <div class="tool-section-title">🔀 布尔运算</div>
+                                    <div class="tool-grid">
+                                        <button class="tool-btn" data-code=".union(other)" title="合并">
+                                            <span>union</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".cut(other)" title="减切">
+                                            <span>cut</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".intersect(other)" title="交集">
+                                            <span>intersect</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".hole(diameter, depth)" title="孔">
+                                            <span>hole</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 变换 -->
+                                <div class="tool-section">
+                                    <div class="tool-section-title">🔄 变换</div>
+                                    <div class="tool-grid">
+                                        <button class="tool-btn" data-code=".translate((dx, dy, dz))" title="平移">
+                                            <span>translate</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".rotate((0,0,0), (0,0,1), angle)" title="旋转">
+                                            <span>rotate</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".scale(factor)" title="缩放">
+                                            <span>scale</span>
+                                        </button>
+                                        <button class="tool-btn" data-code=".mirror(mirrorPlane)" title="镜像">
+                                            <span>mirror</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="editor-container" class="flex-1"></div>
+                    </div>
+                </div>
+                
+                <div class="flex-1 flex flex-col">
+                    <div class="h-8 bg-slate-800/30 flex items-center px-4 border-b border-slate-700 justify-between">
+                        <span class="text-xs font-medium text-slate-400">3D 预览</span>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-reset-view" class="text-xs text-slate-400 hover:text-white transition-colors">
+                                重置视角
+                            </button>
+                        </div>
+                    </div>
+                    <div id="viewer-container">
+                        <canvas id="viewer-canvas"></canvas>
+                        <div id="viewer-overlay" class="absolute inset-0 flex items-center justify-center text-slate-500">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>
+                                </svg>
+                                <p>点击"运行"来查看 3D 模型</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Templates Modal -->
+    <div id="templates-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[80vh] overflow-hidden">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                <h2 class="text-xl font-bold">代码模板</h2>
+                <button id="close-templates" class="text-slate-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="templates-grid" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto max-h-[60vh]">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Examples Modal -->
+    <div id="examples-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                <h2 class="text-xl font-bold">CadQuery 示例库</h2>
+                <button id="close-examples" class="text-slate-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex h-[calc(90vh-120px)]">
+                <!-- Categories Sidebar -->
+                <div class="w-48 bg-slate-900/50 p-4 border-r border-slate-700">
+                    <div class="space-y-2" id="example-categories">
+                    </div>
+                </div>
+                <!-- Examples Grid -->
+                <div class="flex-1 overflow-y-auto p-4">
+                    <div id="examples-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    </div>
+                </div>
+                <!-- Preview Panel -->
+                <div id="example-preview" class="w-96 bg-slate-900/50 p-4 border-l border-slate-700 hidden">
+                    <div class="mb-4">
+                        <h3 id="preview-title" class="font-semibold text-lg mb-2"></h3>
+                        <span id="preview-category" class="text-xs px-2 py-1 bg-slate-700 rounded-full"></span>
+                    </div>
+                    <div class="mb-4">
+                        <div class="text-xs font-medium text-slate-400 mb-2">代码预览</div>
+                        <pre id="preview-code" class="bg-slate-800 p-4 rounded-lg text-xs overflow-auto max-h-[400px] text-slate-300"></pre>
+                    </div>
+                    <button id="use-example" class="w-full btn-primary py-3 rounded-xl font-medium">
+                        使用此示例
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Modal -->
+    <div id="export-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                <h2 class="text-xl font-bold">导出模型</h2>
+                <button id="close-export" class="text-slate-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">格式</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button data-format="stl" class="export-option card p-4 rounded-xl text-center hover:border-cyan-500 transition-colors">
+                            <div class="text-2xl mb-1">📄</div>
+                            <div class="font-medium">STL</div>
+                            <div class="text-xs text-slate-400">3D 打印</div>
+                        </button>
+                        <button data-format="step" class="export-option card p-4 rounded-xl text-center hover:border-cyan-500 transition-colors">
+                            <div class="text-2xl mb-1">📐</div>
+                            <div class="font-medium">STEP</div>
+                            <div class="text-xs text-slate-400">CAD 交换</div>
+                        </button>
+                    </div>
+                </div>
+                <button id="confirm-export" class="w-full btn-primary py-3 rounded-xl font-medium">
+                    导出
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- New Model Modal -->
+    <div id="new-model-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="p-6 border-b border-slate-700 flex items-center justify-between">
+                <h2 class="text-xl font-bold">新建模型</h2>
+                <button id="close-new-model" class="text-slate-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">模型名称</label>
+                    <input id="new-model-name" type="text" placeholder="输入模型名称..." 
+                           class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500">
+                </div>
+                <button id="confirm-new-model" class="w-full btn-primary py-3 rounded-xl font-medium">
+                    创建
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
