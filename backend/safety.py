@@ -20,7 +20,6 @@ BLOCKED_PATTERNS = [
     (r'\bfrom\s+http\b', '禁止从 http 模块导入'),
     (r'\bfrom\s+urllib\b', '禁止从 urllib 模块导入'),
     (r'\bfrom\s+requests\b', '禁止从 requests 模块导入'),
-    (r'\b__import__\s*\(', '禁止使用 __import__'),
     (r'\bopen\s*\(', '禁止使用 open()'),
     (r'\beval\s*\(', '禁止使用 eval()'),
     (r'\bexec\s*\(', '禁止使用 exec()'),

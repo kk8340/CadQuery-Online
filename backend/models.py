@@ -10,6 +10,7 @@ class ExecuteResponse(BaseModel):
     success: bool
     meshData: Optional[str] = None
     error: Optional[str] = None
+    output: Optional[str] = None
 
 
 class ExportRequest(BaseModel):
@@ -39,3 +40,15 @@ class ModelCreate(BaseModel):
 class ModelUpdate(BaseModel):
     name: Optional[str] = None
     code: Optional[str] = None
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    code: str = ""
+    output: str = ""
+    error: str = ""

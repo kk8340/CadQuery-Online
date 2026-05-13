@@ -7,6 +7,8 @@ const editorCode = ref('')
 const meshData = ref('')
 const statusText = ref('就绪')
 const statusType = ref('idle')
+const lastOutput = ref('')
+const lastError = ref('')
 
 function setStatus(text, type) {
   statusText.value = text
@@ -16,17 +18,24 @@ function setStatus(text, type) {
 async function runCode() {
   statusText.value = '执行中...'
   statusType.value = 'running'
+  lastOutput.value = ''
+  lastError.value = ''
   try {
     const result = await executeCode(editorCode.value)
+    if (result.output) {
+      lastOutput.value = result.output
+    }
     if (result.meshData) {
       meshData.value = result.meshData
       setStatus('执行成功', 'success')
     } else if (result.error) {
+      lastError.value = result.error
       setStatus(result.error, 'error')
     } else {
       setStatus('执行成功', 'success')
     }
   } catch (e) {
+    lastError.value = e.message || '执行失败'
     setStatus(e.message || '执行失败', 'error')
   }
 }
@@ -61,7 +70,7 @@ async function exportModel(format, modelName) {
 
 export function useEditor() {
   return {
-    editorCode, meshData, statusText, statusType,
+    editorCode, meshData, statusText, statusType, lastOutput, lastError,
     setStatus, runCode, exportModel
   }
 }

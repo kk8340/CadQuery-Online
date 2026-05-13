@@ -143,6 +143,38 @@ function resetView() {
   fitCameraToModel()
 }
 
+function setView(viewName) {
+  if (!currentMesh) {
+    camera.position.set(40, 40, 40)
+    camera.lookAt(0, 0, 0)
+    controls.target.set(0, 0, 0)
+    controls.update()
+    return
+  }
+
+  const box = new THREE.Box3().setFromObject(currentMesh)
+  const size = box.getSize(new THREE.Vector3())
+  const center = box.getCenter(new THREE.Vector3())
+  const maxDim = Math.max(size.x, size.y, size.z)
+  const d = maxDim * 2
+
+  const views = {
+    front:  { x: center.x, y: center.y, z: center.z + d },
+    back:   { x: center.x, y: center.y, z: center.z - d },
+    top:    { x: center.x, y: center.y + d, z: center.z },
+    bottom: { x: center.x, y: center.y - d, z: center.z },
+    left:   { x: center.x - d, y: center.y, z: center.z },
+    right:  { x: center.x + d, y: center.y, z: center.z },
+    iso:    { x: center.x + d * 0.6, y: center.y + d * 0.6, z: center.z + d * 0.6 },
+  }
+
+  const pos = views[viewName] || views.iso
+  camera.position.set(pos.x, pos.y, pos.z)
+  camera.lookAt(center)
+  controls.target.copy(center)
+  controls.update()
+}
+
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   if (animationId) cancelAnimationFrame(animationId)
@@ -154,5 +186,5 @@ onBeforeUnmount(() => {
   controls.dispose()
 })
 
-defineExpose({ resetView })
+defineExpose({ resetView, setView })
 </script>
