@@ -52,10 +52,61 @@ cd frontend
 npm install
 ```
 
-4. 配置 AI 助手（可选）：
-```bash
-setx DEEPSEEK_API_KEY "your-api-key-here"
+## AI 助手配置
+
+AI 助手使用 DeepSeek API，需要配置 API Key。
+
+### 获取 API Key
+
+1. 访问 [DeepSeek 开放平台](https://platform.deepseek.com/)
+2. 注册/登录账号
+3. 在 API Keys 页面创建新的 API Key
+4. 复制 Key 备用
+
+### 配置方式
+
+**Windows（永久配置，推荐）：**
+```cmd
+setx DEEPSEEK_API_KEY "your-deepseek-api-key-here"
 ```
+配置后需要**重新打开命令行窗口**使环境变量生效。
+
+**Windows（当前窗口生效）：**
+```cmd
+set DEEPSEEK_API_KEY=your-deepseek-api-key-here
+```
+
+**Linux/Mac：**
+```bash
+export DEEPSEEK_API_KEY="your-deepseek-api-key-here"
+```
+
+### 验证配置
+
+启动后端后，访问 http://localhost:8000/docs，找到 `/api/ai/chat` 接口测试。
+
+### AI 功能说明
+
+| 功能 | 说明 |
+|------|------|
+| 代码分析 | AI 可阅读当前编辑器代码，分析逻辑 |
+| 错误诊断 | AI 读取运行错误，自动定位问题并给出修复建议 |
+| 代码生成 | AI 根据需求生成 CadQuery 建模代码 |
+| 代码应用 | AI 返回的代码可一键应用到编辑器，需用户确认 |
+| 视角控制 | AI 可自动切换 3D 视角检查模型 |
+
+### AI 代码格式
+
+当 AI 返回可应用的代码时，使用以下格式：
+
+````python
+```python:edit
+import cadquery as cq
+result = cq.Workplane("XY").box(20, 20, 10)
+```
+````
+
+AI 也可能返回视角控制命令，如 `[VIEW:iso]`、`[VIEW:top]` 等。
 
 ## 启动应用
 
